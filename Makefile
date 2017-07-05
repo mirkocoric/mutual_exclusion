@@ -12,9 +12,15 @@ clean:
 	rm -rf venv
 
 run:
-	@${PYTHONPATH} mutual_exclusion.py 4 3 'pingpong' 1
+	@${PYTHONPATH} mutual_exclusion.py 2 3 'pingpong' 0.01
 
-virtualenv: requirements.txt | venv 
+pingpong:
+	@${PYTHONPATH} mutual_exclusion.py 2 3 'pingpong' 0.01
+
+ricart_agrawala:
+	@${PYTHONPATH} mutual_exclusion.py 3 3 'ricart_agrawala' 0.01
+
+virtualenv: requirements.txt | venv
 	@venv/bin/pip install -r requirements.txt
 
 venv: venv/
