@@ -1,5 +1,10 @@
-class Statistics():
-    """Class which collects messages and calculates statistics"""
+from _multiprocessing import Connection
+from common import RequestFlag, ResponseFlag
+
+
+class Analytics(object):
+    """Class which calculates relevant analytics"""
+
     def __init__(self):
         self.numsentrequests = 0
         self.numsentresponses = 0
@@ -22,9 +27,9 @@ class Statistics():
         """Updates number of sent request messages"""
         self.numsentrequests += 1
 
-    def print_statistics(self, pid):
-        """Prints relevant statistics"""
-        print '********\nStatistics for process %d' % pid
+    def print_analytics(self, pid):
+        """Prints relevant analytics"""
+        print '********\nAnalytics for process %d' % pid
         print 'Received responses %d' % self.numrecvresponses
         print 'Received requests %d' % self.numrecvrequests
         print 'Sent responses %d' % self.numsentresponses

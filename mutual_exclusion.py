@@ -2,6 +2,8 @@
 import argparse
 import ping_pong
 import ricart_agrawala
+import lamport
+from data import Data
 
 
 def parse_args():
@@ -18,41 +20,37 @@ def parse_args():
     parser.add_argument('process_duration',
                         help='Duration of each process',
                         type=float)
-    return (parser.parse_args().n_iter,
-            parser.parse_args().n_processes,
-            parser.parse_args().method,
-            parser.parse_args().process_duration)
-
-
-def close_conn(pipes):
-    """Closes all pipes from pipes dictionary"""
-    filter(lambda x: x.close(), (conn for listconn in pipes.keys()
-                                 for conn in pipes[listconn]))
+    args = parser.parse_args()
+    return (args.n_iter,
+            args.n_processes,
+            args.method,
+            args.process_duration)
 
 
 def start_app():
     """Creates pipes and processes and starts application"""
     numiter, numprocesses, method, duration = parse_args()
+    data = Data(numprocesses, numiter, duration)
     if method == 'pingpong':
-        pipesread, pipeswrite, processes = \
-            ping_pong.create_all(numprocesses, numiter, duration)
+        ping_pong.create_all(data)
     elif method == 'ricart_agrawala':
-        pipesread, pipeswrite, processes = \
-            ricart_agrawala.create_all(numprocesses, numiter, duration)
+        ricart_agrawala.create_all(data)
+    elif method == 'lamport':
+        lamport.create_all(data)
     else:
         raise ValueError(
             'Unsupported method. Please choose pingpong or ricart_agrawala')
 
     print 'Starting processes'
     try:
-        for proc in processes:
+        for proc in data.processes:
             proc.start()
-        for proc in processes:
+        for proc in data.processes:
             proc.join()
     finally:
-        close_conn(pipesread)
-        close_conn(pipeswrite)
+        data.close_conn()
         print 'Pipe closed'
+
 
 if __name__ == '__main__':
     start_app()

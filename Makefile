@@ -1,5 +1,5 @@
-HONY: \
-    all \
+PHONY: \
+	all \
 	run \
 	virtualenv \
 	venv \
