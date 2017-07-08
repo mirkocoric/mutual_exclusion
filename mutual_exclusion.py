@@ -3,7 +3,7 @@ import argparse
 import ping_pong
 import ricart_agrawala
 import lamport
-from data import Data
+from mutual_exclusion_data import MutualExclusionData
 
 
 def parse_args():
@@ -17,25 +17,21 @@ def parse_args():
                         type=int)
     parser.add_argument('method',
                         help='mutual exclusion method')
-    parser.add_argument('process_duration',
+    parser.add_argument('duration',
                         help='Duration of each process',
                         type=float)
-    args = parser.parse_args()
-    return (args.n_iter,
-            args.n_processes,
-            args.method,
-            args.process_duration)
+    return parser.parse_args()
 
 
 def start_app():
     """Creates pipes and processes and starts application"""
-    numiter, numprocesses, method, duration = parse_args()
-    data = Data(numprocesses, numiter, duration)
-    if method == 'pingpong':
+    args = parse_args()
+    data = MutualExclusionData(args)
+    if args.method == 'pingpong':
         ping_pong.create_all(data)
-    elif method == 'ricart_agrawala':
+    elif args.method == 'ricart_agrawala':
         ricart_agrawala.create_all(data)
-    elif method == 'lamport':
+    elif args.method == 'lamport':
         lamport.create_all(data)
     else:
         raise ValueError(
@@ -48,7 +44,7 @@ def start_app():
         for proc in data.processes:
             proc.join()
     finally:
-        data.close_conn()
+        data.close()
         print 'Pipe closed'
 
 

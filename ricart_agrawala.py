@@ -1,55 +1,53 @@
 from select import select
 import time
-from collections import namedtuple
-import common
 from multiprocessing import Process
-from common import RequestFlag, ResponseFlag
-from data import Data
-from analytics_connection import AnalyticsConnection
+from mutual_exclusion_methods import create_pipes, send_response, send_request
+from counting_connection import REQUESTFLAG, RESPONSEFLAG
 from analytics import Analytics
-StartTime = time.time()
 
 
 def ricart_agrawala(pid, data):
     """Implements ricart_argawala algorithm for mutual exclusion"""
-    later_connections = []
-    analytics = AnalyticsConnection()
-    conn = data.pipesread[pid]
-    for _ in xrange(data.numiter):
-        timestamp = common.send_request(conn, pid, analytics)
-        later_connections = check_messages(conn, timestamp, pid, analytics)
+    conns = data.pipes_read[pid]
+    analytics = Analytics()
+    for conn in conns:
+        conn.set_analytics(analytics)
+    start_time = time.time()
+    for _ in xrange(data.n_iter):
+        timestamp = send_request(conns, pid)
+        conns_respond_later = check_messages(conns, timestamp, pid)
         print ('I am process %d my request time is %f' %
-               (pid, timestamp - StartTime))
+               (pid, timestamp - start_time))
         time.sleep(data.duration)
-        common.send_response(later_connections, timestamp, pid, analytics)
-    while analytics.num_sent_responses() < data.numiter * len(conn):
-        check_messages_end(conn, timestamp, pid, analytics)
+        send_response(conns_respond_later, timestamp, pid,)
+    while analytics.n_send_resp < data.n_iter * len(conns):
+        check_messages_end(conns, timestamp, pid)
     analytics.print_analytics(pid)
 
 
-def check_messages(connread, timestamp, pid, analytics):
+def check_messages(connread, timestamp, pid):
     """Check messages from connections
     Returns list of connections to send response after leaving critical section
     """
-    permissions_number = 0
-    send_response_later = []
-    while permissions_number < len(connread):
+    n_perm = 0
+    conns_respond_later = []
+    while n_perm < len(connread):
         conncheck, _, _ = select(connread, [], [])
         for conn in conncheck:
-            message = analytics.recv(conn)
+            message = conn.recv()
             print('Process %d received %s'
                   % (pid, message.flag))
-            if (message.flag == RequestFlag and
+            if (message.flag == REQUESTFLAG and
                     message.timestamp < timestamp):
-                common.send_response([conn], timestamp, pid, analytics)
-            elif (message.flag == RequestFlag):
-                send_response_later.append(conn)
-            elif (message.flag == ResponseFlag):
-                permissions_number += 1
-    return send_response_later
+                send_response([conn], timestamp, pid)
+            elif (message.flag == REQUESTFLAG):
+                conns_respond_later.append(conn)
+            elif (message.flag == RESPONSEFLAG):
+                n_perm += 1
+    return conns_respond_later
 
 
-def check_messages_end(connread, timestamp, pid, analytics):
+def check_messages_end(connread, timestamp, pid):
     """Check messages when finished if some process is still not sent
     requests
     """
@@ -58,17 +56,17 @@ def check_messages_end(connread, timestamp, pid, analytics):
         message = conn.recv()
         print('Process %d received %s'
               % (pid, message.flag))
-        if message.flag == RequestFlag:
-            common.send_response([conn], timestamp, pid, analytics)
+        if message.flag == REQUESTFLAG:
+            send_response([conn], timestamp, pid)
 
 
 def create_processes(data):
     """Creates maxnum processes"""
     return ([Process(target=ricart_agrawala, args=(proc, data))
-             for proc in xrange(data.numprocesses)])
+             for proc in xrange(data.n_processes)])
 
 
 def create_all(data):
     """Returns pipes and processes for pingpong"""
-    data.set_pipes(common.create_pipes(data.numprocesses), {})
+    data.set_pipes(create_pipes(data.n_processes), {})
     data.set_processes(create_processes(data))

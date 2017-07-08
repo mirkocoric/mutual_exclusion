@@ -4,11 +4,11 @@ import time
 from collections import namedtuple
 from multiprocessing import Pipe
 from itertools import combinations
+from counting_connection import CountingConnection
+from counting_connection import REQUESTFLAG, RESPONSEFLAG
 
 
 Message = namedtuple('Message', 'flag timestamp')
-RequestFlag = 'Request'
-ResponseFlag = 'Response'
 
 
 def create_message(flag, timestamp):
@@ -16,20 +16,19 @@ def create_message(flag, timestamp):
     return Message(flag, timestamp)
 
 
-def send_request(connwrite, pid, analytics):
+def send_request(connwrite, pid):
     """Send request messages to all sites"""
     timestamp = time.time()
     for conn in connwrite:
-        analytics.send(conn, Message(flag=RequestFlag,
-                                     timestamp=timestamp))
+        conn.send(Message(flag=REQUESTFLAG, timestamp=timestamp))
         print('Process %d sent Request' % pid)
     return timestamp
 
 
-def send_response(connwrite, timestamp, pid, analytics):
+def send_response(connwrite, timestamp, pid):
     """Send response message"""
     for conn in connwrite:
-        analytics.send(conn, Message(flag=ResponseFlag, timestamp=timestamp))
+        conn.send(Message(flag=RESPONSEFLAG, timestamp=timestamp))
         print ('Process %d sent Response' % pid)
 
 
@@ -40,7 +39,7 @@ def create_pipes(numprocesses):
     """
     pipes = {i: [] for i in xrange(numprocesses)}
     for i, j in combinations(xrange(numprocesses), 2):
-        pipe = Pipe()
-        pipes[i].append(pipe[0])
-        pipes[j].append(pipe[1])
+        conn1, conn2 = Pipe()
+        pipes[i].append(CountingConnection(conn1))
+        pipes[j].append(CountingConnection(conn2))
     return pipes

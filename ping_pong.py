@@ -3,43 +3,43 @@ from multiprocessing import Process
 import time
 
 
-def process(pid, connread, connwrite, numiter, duration):
+def process(pid, conn_read, conn_write, n_iter, duration):
     """Processes repeatedly calls each other in a circular way"""
-    for iteration in xrange(numiter):
-        if pid != 0 or iteration != 0:
-            connread[0].recv()
+    for iteration in xrange(n_iter):
+        if pid or iteration:
+            conn_read[0].recv()
         print 'I am process %d' % pid
         time.sleep(duration)
-        connwrite[0].send('Done')
+        conn_write[0].send('Done')
 
 
 def create_processes(data):
     """Creates maxnum processes"""
-    return [Process(target=process, args=(proc, data.pipesread[proc],
-                                          data.pipeswrite[proc], data.numiter,
+    return [Process(target=process, args=(proc, data.pipes_read[proc],
+                                          data.pipes_write[proc], data.n_iter,
                                           data.duration))
-            for proc in xrange(data.numprocesses)]
+            for proc in xrange(data.n_processes)]
 
 
-def create_pipes(numprocesses):
+def create_pipes(n_processes):
     """Creates pipes which connects process with its neighbour
     Returns dictionaries where keys are pid and values are pipes objects for
     reading/writing
     """
-    pipesread = {i: [] for i in xrange(numprocesses)}
-    pipeswrite = {i: [] for i in xrange(numprocesses)}
-    for i in xrange(numprocesses - 1):
+    pipes_read = {i: [] for i in xrange(n_processes)}
+    pipes_write = {i: [] for i in xrange(n_processes)}
+    for i in xrange(n_processes - 1):
         pipe = Pipe()
-        pipeswrite[i].append(pipe[0])
-        pipesread[i + 1].append(pipe[1])
+        pipes_write[i].append(pipe[0])
+        pipes_read[i + 1].append(pipe[1])
     pipe = Pipe()
-    pipeswrite[numprocesses - 1].append(pipe[0])
-    pipesread[0].append(pipe[1])
-    return pipesread, pipeswrite
+    pipes_write[n_processes - 1].append(pipe[0])
+    pipes_read[0].append(pipe[1])
+    return pipes_read, pipes_write
 
 
 def create_all(data):
     """Main method which returns pipes and processes for pingpong"""
-    pipesread, pipeswrite = create_pipes(data.numprocesses)
-    data.set_pipes(pipesread, pipeswrite)
+    pipes_read, pipes_write = create_pipes(data.n_processes)
+    data.set_pipes(pipes_read, pipes_write)
     data.set_processes(create_processes(data))
