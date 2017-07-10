@@ -1,5 +1,6 @@
 REQUESTFLAG = 'Request'
 RESPONSEFLAG = 'Response'
+RELEASEFLAG = 'Release'
 
 
 class CountingConnection(object):

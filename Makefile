@@ -11,6 +11,9 @@ all: virtualenv	run
 clean:
 	rm -rf venv
 
+lamport:
+	@${PYTHONPATH} mutual_exclusion.py 3 3 'lamport' 0.01
+
 run:
 	@${PYTHONPATH} mutual_exclusion.py 2 3 'pingpong' 0.01
 
