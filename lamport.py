@@ -3,7 +3,7 @@ import time
 from multiprocessing import Process
 import Queue as q
 from mutual_exclusion_methods import create_pipes, send_response, send_request
-from mutual_exclusion_methods import receive_message, set_analytics, Message
+from mutual_exclusion_methods import receive_message, Message
 from mutual_exclusion_methods import check_messages_end
 from counting_connection import REQUESTFLAG, RESPONSEFLAG, RELEASEFLAG
 
@@ -11,7 +11,6 @@ from counting_connection import REQUESTFLAG, RESPONSEFLAG, RELEASEFLAG
 def lamport(pid, data, start_time):
     """Implements ricart_argawala algorithm for mutual exclusion"""
     conns = data.pipes_read[pid]
-    analytics = set_analytics(conns)
     pq = q.PriorityQueue()
     for _ in xrange(data.n_iter):
         timestamp = send_request(conns, pid)
@@ -21,9 +20,9 @@ def lamport(pid, data, start_time):
                (pid, timestamp - start_time))
         time.sleep(data.duration)
         send_release(conns, timestamp, pid)
-    while analytics.n_send_resp < data.n_iter * len(conns):
+    while conns[0]._self_analytics.n_send_resp < data.n_iter * len(conns):
         check_messages_end(conns, timestamp, pid)
-    analytics.print_analytics(pid)
+    conns[0]._self_analytics.print_analytics(pid)
 
 
 def check_messages(connread, timestamp, pid, pq):

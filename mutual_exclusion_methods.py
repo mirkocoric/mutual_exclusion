@@ -4,7 +4,7 @@ import time
 from collections import namedtuple
 from multiprocessing import Pipe
 from itertools import combinations
-from select import select
+from select import kevent, kqueue
 from counting_connection import CountingConnection
 from counting_connection import REQUESTFLAG, RESPONSEFLAG
 from analytics import Analytics
@@ -33,22 +33,24 @@ def send_response(connwrite, timestamp, pid):
         print ('Process %d sent Response' % pid)
 
 
+def find_connection(event, connread):
+    """Find connection for which event is related"""
+    for conn in connread:
+        if conn.fileno() == event.ident:
+            return conn
+
+
 def receive_message(connread, pid):
     """Receives one message"""
-    conncheck, _, _ = select(connread, [], [])
-    if conncheck:
-        message = conncheck[0].recv()
-        print('Process %d received %s'
-              % (pid, message.flag))
-        return message, conncheck[0]
-
-
-def set_analytics(conns):
-    """Creates analytics object and sets it to each connection"""
-    analytics = Analytics()
-    for conn in conns:
-        conn.set_analytics(analytics)
-    return analytics
+    k = [kevent(conn) for conn in connread]
+    queue = kqueue()
+    queue.control(k, 0)
+    event = queue.control(None, 1)
+    conncheck = find_connection(event[0], connread)
+    message = conncheck.recv()
+    print('Process %d received %s'
+          % (pid, message.flag))
+    return message, conncheck
 
 
 def create_pipes(numprocesses):
@@ -57,10 +59,11 @@ def create_pipes(numprocesses):
     reading/writing
     """
     pipes = {i: [] for i in xrange(numprocesses)}
+    analytics = [Analytics() for i in xrange(numprocesses)]
     for i, j in combinations(xrange(numprocesses), 2):
         conn1, conn2 = Pipe()
-        pipes[i].append(CountingConnection(conn1))
-        pipes[j].append(CountingConnection(conn2))
+        pipes[i].append(CountingConnection(conn1, analytics[i]))
+        pipes[j].append(CountingConnection(conn2, analytics[j]))
     return pipes
 
 
